@@ -6,21 +6,20 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 
-@Controller()
+@Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get('admin/dashboard-stats')
+  @Get('admin')
   @Roles(UserRole.ADMIN)
   getAdminStats() {
     return this.dashboardService.getAdminDashboardStats();
   }
 
-  @Get('users/dashboard-stats')
+  @Get('user')
   @Roles(UserRole.MEMBER)
   getUserStats(@CurrentUser() user) {
-    console.log('controller', user.id);
     return this.dashboardService.getUserDashboardStats(user.id);
   }
 }

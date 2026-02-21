@@ -79,22 +79,7 @@ export class DashboardService {
     };
   }
 
-  async getUserDashboardStatsByEmail(email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user || !user.isActive) {
-      throw new BadRequestException('Inactive user cannot access dashboard');
-    }
-
-    return this.getUserDashboardStats(user.id);
-  }
-
   async getUserDashboardStats(userId: string) {
-    console.log(userId);
-    console.log('Bhaskar');
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
