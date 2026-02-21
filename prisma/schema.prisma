@@ -27,14 +27,16 @@ model User {
   createdAt    DateTime @default(now())
   loans        Loan[]
   profileImage String?
+  isActive     Boolean  @default(true)
 }
 
 model Book {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   title    String
-  isbn     String @unique
+  isbn     String  @unique
   quantity Int
   loans    Loan[]
+  isActive Boolean @default(true)
 }
 
 model Loan {

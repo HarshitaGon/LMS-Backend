@@ -1,8 +1,8 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -12,8 +12,16 @@ export class LoanService {
 
   async issueBook(userId: string, bookId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const book = await tx.book.findUnique({
-        where: { id: bookId },
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user || !user.isActive) {
+        throw new BadRequestException('Inactive user cannot issue books');
+      }
+
+      const book = await tx.book.findFirst({
+        where: { id: bookId, isActive: true },
       });
 
       if (!book) throw new NotFoundException('Book not found');
@@ -23,36 +31,60 @@ export class LoanService {
       }
 
       const existingLoan = await tx.loan.findFirst({
-        where: {
-          userId,
-          bookId,
-          returnedAt: null,
-        },
+        where: { userId, bookId, returnedAt: null },
       });
 
       if (existingLoan) {
-        throw new BadRequestException(
-          'You already have this book issued. Return it first.',
-        );
+        throw new BadRequestException('You already have this book issued');
       }
 
       const loan = await tx.loan.create({
-        data: {
-          userId,
-          bookId,
-        },
+        data: { userId, bookId },
       });
 
       await tx.book.update({
         where: { id: bookId },
-        data: {
-          quantity: { decrement: 1 },
-        },
+        data: { quantity: { decrement: 1 } },
       });
 
       return loan;
     });
   }
+  // async issueBook(userId: string, bookId: string) {
+  //   return this.prisma.$transaction(async (tx) => {
+  //     const book = await tx.book.findFirst({
+  //       where: { id: bookId, isActive: true },
+  //     });
+
+  //     if (!book) throw new NotFoundException('Book not found');
+
+  //     if (book.quantity < 1) {
+  //       throw new BadRequestException('Book not available');
+  //     }
+
+  //     const existingLoan = await tx.loan.findFirst({
+  //       where: { userId, bookId, returnedAt: null },
+  //     });
+
+  //     if (existingLoan) {
+  //       throw new BadRequestException('You already have this book issued');
+  //     }
+
+  //     const loan = await tx.loan.create({
+  //       data: {
+  //         userId,
+  //         bookId,
+  //       },
+  //     });
+
+  //     await tx.book.update({
+  //       where: { id: bookId },
+  //       data: { quantity: { decrement: 1 } },
+  //     });
+
+  //     return loan;
+  //   });
+  // }
 
   async returnBook(loanId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -63,7 +95,7 @@ export class LoanService {
       if (!loan) throw new NotFoundException('Loan not found');
 
       if (loan.userId !== userId) {
-        throw new ForbiddenException('You cannot return this book');
+        throw new ForbiddenException('Not allowed');
       }
 
       if (loan.returnedAt) {
@@ -72,16 +104,12 @@ export class LoanService {
 
       await tx.loan.update({
         where: { id: loanId },
-        data: {
-          returnedAt: new Date(),
-        },
+        data: { returnedAt: new Date() },
       });
 
       await tx.book.update({
         where: { id: loan.bookId },
-        data: {
-          quantity: { increment: 1 },
-        },
+        data: { quantity: { increment: 1 } },
       });
 
       return { message: 'Book returned successfully' };
@@ -91,10 +119,7 @@ export class LoanService {
   async activeLoans() {
     return this.prisma.loan.findMany({
       where: { returnedAt: null },
-      include: {
-        user: true,
-        book: true,
-      },
+      include: { user: true, book: true },
     });
   }
 

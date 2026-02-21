@@ -15,13 +15,13 @@ export class LoanController {
   @Post('issue')
   @Roles(UserRole.MEMBER)
   issueBook(@Body() dto: CreateLoanDto, @CurrentUser() user) {
-    return this.loanService.issueBook(user.sub, dto.bookId);
+    return this.loanService.issueBook(user.id, dto.bookId);
   }
 
   @Post('return/:id')
   @Roles(UserRole.MEMBER)
   returnBook(@Param('id') loanId: string, @CurrentUser() user) {
-    return this.loanService.returnBook(loanId, user.sub);
+    return this.loanService.returnBook(loanId, user.id);
   }
 
   @Get('active')
@@ -33,6 +33,6 @@ export class LoanController {
   @Get('my-loans')
   @Roles(UserRole.MEMBER)
   myLoans(@CurrentUser() user) {
-    return this.loanService.myLoans(user.sub);
+    return this.loanService.myLoans(user.id);
   }
 }

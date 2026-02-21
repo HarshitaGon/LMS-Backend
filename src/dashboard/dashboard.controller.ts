@@ -20,6 +20,7 @@ export class DashboardController {
   @Get('users/dashboard-stats')
   @Roles(UserRole.MEMBER)
   getUserStats(@CurrentUser() user) {
-    return this.dashboardService.getUserDashboardStats(user.sub);
+    console.log('controller', user.id);
+    return this.dashboardService.getUserDashboardStats(user.id);
   }
 }

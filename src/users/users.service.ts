@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -31,6 +32,7 @@ export class UsersService {
 
     return this.prisma.user.findMany({
       where: {
+        isActive: true, // 🔥 key line
         AND: [
           name ? { name: { contains: name, mode: 'insensitive' } } : {},
           email ? { email: { contains: email, mode: 'insensitive' } } : {},
@@ -40,8 +42,15 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    // const user = await this.prisma.user.findUnique({
+    //   where: { id },
+    // });
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: id,
+        isActive: true,
+      },
     });
 
     if (!user) {
@@ -61,10 +70,28 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const user = await this.findOne(id);
 
-    return this.prisma.user.delete({
+    if (!user.isActive) {
+      throw new BadRequestException('User already deleted');
+    }
+
+    const activeLoansCount = await this.prisma.loan.count({
+      where: {
+        userId: id,
+        returnedAt: null,
+      },
+    });
+
+    if (activeLoansCount > 0) {
+      throw new BadRequestException(
+        'User cannot be deleted: active loans exist',
+      );
+    }
+
+    return this.prisma.user.update({
       where: { id },
+      data: { isActive: false },
     });
   }
 

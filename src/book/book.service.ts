@@ -12,28 +12,28 @@ import { SearchBookDto } from './dto/search-book.dto';
 export class BooksService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateBookDto) {
-    return this.prisma.book.create({
-      data: dto,
-    });
+  async create(dto: CreateBookDto) {
+    return this.prisma.book.create({ data: dto });
   }
 
-  findAll(search: SearchBookDto) {
+  async findAll(search: SearchBookDto) {
     const { title, isbn } = search;
 
     return this.prisma.book.findMany({
       where: {
+        isActive: true,
         AND: [
           title ? { title: { contains: title, mode: 'insensitive' } } : {},
           isbn ? { isbn: { contains: isbn } } : {},
         ],
       },
+      orderBy: { title: 'asc' },
     });
   }
 
   async findOne(id: string) {
-    const book = await this.prisma.book.findUnique({
-      where: { id },
+    const book = await this.prisma.book.findFirst({
+      where: { id, isActive: true },
     });
 
     if (!book) {
@@ -53,10 +53,16 @@ export class BooksService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const book = await this.prisma.book.findFirst({
+      where: { id, isActive: true },
+    });
+
+    if (!book) {
+      throw new NotFoundException('Book not found or already deleted');
+    }
 
     const activeLoans = await this.prisma.loan.count({
-      where: { bookId: id },
+      where: { bookId: id, returnedAt: null },
     });
 
     if (activeLoans > 0) {
@@ -65,8 +71,9 @@ export class BooksService {
       );
     }
 
-    return this.prisma.book.delete({
+    return this.prisma.book.update({
       where: { id },
+      data: { isActive: false },
     });
   }
 }

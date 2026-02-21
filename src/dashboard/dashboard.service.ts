@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { log } from 'console';
 
 @Injectable()
 export class DashboardService {
@@ -9,20 +10,40 @@ export class DashboardService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const totalLoans = await this.prisma.loan.count();
+    const loanFilter = {
+      user: { isActive: true },
+      book: { isActive: true },
+    };
+
+    const totalLoans = await this.prisma.loan.count({
+      where: loanFilter,
+    });
+
     const activeLoans = await this.prisma.loan.count({
-      where: { returnedAt: null },
+      where: {
+        ...loanFilter,
+        returnedAt: null,
+      },
     });
+
     const returnedLoans = await this.prisma.loan.count({
-      where: { returnedAt: { not: null } },
+      where: {
+        ...loanFilter,
+        returnedAt: { not: null },
+      },
     });
+
     const overdueLoans = await this.prisma.loan.count({
       where: {
+        ...loanFilter,
         returnedAt: null,
         issuedAt: { lt: thirtyDaysAgo },
       },
     });
-    const totalUsers = await this.prisma.user.count();
+
+    const totalUsers = await this.prisma.user.count({
+      where: { isActive: true },
+    });
 
     const loanStatusChart = [
       { name: 'Active', value: activeLoans },
@@ -31,11 +52,11 @@ export class DashboardService {
     ];
 
     const allLoans = await this.prisma.loan.findMany({
+      where: loanFilter,
       select: { issuedAt: true },
       orderBy: { issuedAt: 'asc' },
     });
 
-    const loansOverTime: { date: string; count: number }[] = [];
     const dateMap = new Map<string, number>();
 
     allLoans.forEach((loan) => {
@@ -43,11 +64,9 @@ export class DashboardService {
       dateMap.set(date, (dateMap.get(date) || 0) + 1);
     });
 
-    Array.from(dateMap.entries())
-      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .forEach(([date, count]) => {
-        loansOverTime.push({ date, count });
-      });
+    const loansOverTime = Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
 
     return {
       totalLoans,
@@ -60,19 +79,45 @@ export class DashboardService {
     };
   }
 
+  async getUserDashboardStatsByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.isActive) {
+      throw new BadRequestException('Inactive user cannot access dashboard');
+    }
+
+    return this.getUserDashboardStats(user.id);
+  }
+
   async getUserDashboardStats(userId: string) {
+    console.log(userId);
+    console.log('Bhaskar');
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.isActive) {
+      throw new BadRequestException('Inactive user cannot access dashboard');
+    }
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const userLoans = await this.prisma.loan.findMany({
-      where: { userId },
+      where: {
+        userId,
+        book: { isActive: true },
+      },
     });
 
     const myTotalLoans = userLoans.length;
-    const myActiveLoans = userLoans.filter((loan) => !loan.returnedAt).length;
-    const myReturnedLoans = userLoans.filter((loan) => loan.returnedAt).length;
+    const myActiveLoans = userLoans.filter((l) => !l.returnedAt).length;
+    const myReturnedLoans = userLoans.filter((l) => l.returnedAt).length;
     const myOverdueLoans = userLoans.filter(
-      (loan) => !loan.returnedAt && loan.issuedAt < thirtyDaysAgo,
+      (l) => !l.returnedAt && l.issuedAt < thirtyDaysAgo,
     ).length;
 
     const myLoanStatusChart = [

@@ -12,63 +12,48 @@ import { LoginDto } from './dto/login.dto';
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async signup(signupDto: SignupDto) {
+  async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
-      where: {
-        email: signupDto.email,
-      },
+      where: { email: dto.email },
     });
 
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(signupDto.password, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
-        name: signupDto.name,
-        email: signupDto.email,
+        name: dto.name,
+        email: dto.email,
         password: hashedPassword,
         role: 'MEMBER',
       },
     });
 
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
+    return {
+      message: 'User created successfully',
+      name: user.name,
       email: user.email,
       role: user.role,
-    });
-
-    return {
-      message: 'User Created Successfully',
-      data: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: {
-        email: loginDto.email,
-      },
+      where: { email: dto.email },
     });
 
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordMatch = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
+    const passwordMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid credentials');
@@ -80,13 +65,11 @@ export class AuthService {
       role: user.role,
     });
 
-    const normalizedRole = user.role?.toUpperCase() || 'MEMBER';
-
     return {
       accessToken,
       name: user.name,
       email: user.email,
-      role: normalizedRole,
+      role: user.role,
     };
   }
 }
