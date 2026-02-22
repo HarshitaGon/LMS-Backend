@@ -19,15 +19,18 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   name         String
-  email        String   @unique
+  email        String    @unique
   password     String
-  role         UserRole @default(MEMBER)
-  createdAt    DateTime @default(now())
+  role         UserRole  @default(MEMBER)
+  createdAt    DateTime  @default(now())
   loans        Loan[]
   profileImage String?
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
+  otp          String?
+  otpExpiry    DateTime?
+  tempPassword String?
 }
 
 model Book {
