@@ -19,8 +19,6 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  /* ========================= SIGNUP ========================= */
-
   async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -49,8 +47,6 @@ export class AuthService {
     };
   }
 
-  /* ========================= LOGIN ========================= */
-
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -78,8 +74,6 @@ export class AuthService {
       role: user.role,
     };
   }
-
-  /* ========================= FORGOT PASSWORD ========================= */
 
   async forgotPassword(email: string) {
     const user = await this.prisma.user.findUnique({
@@ -113,8 +107,6 @@ export class AuthService {
     return { message: 'OTP sent to email' };
   }
 
-  /* ========================= VERIFY OTP ========================= */
-
   async verifyOtp(email: string, otp: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -134,8 +126,6 @@ export class AuthService {
 
     return { message: 'OTP verified successfully' };
   }
-
-  /* ========================= RESET PASSWORD ========================= */
 
   async resetPassword(
     email: string,

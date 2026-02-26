@@ -50,41 +50,6 @@ export class LoanService {
       return loan;
     });
   }
-  // async issueBook(userId: string, bookId: string) {
-  //   return this.prisma.$transaction(async (tx) => {
-  //     const book = await tx.book.findFirst({
-  //       where: { id: bookId, isActive: true },
-  //     });
-
-  //     if (!book) throw new NotFoundException('Book not found');
-
-  //     if (book.quantity < 1) {
-  //       throw new BadRequestException('Book not available');
-  //     }
-
-  //     const existingLoan = await tx.loan.findFirst({
-  //       where: { userId, bookId, returnedAt: null },
-  //     });
-
-  //     if (existingLoan) {
-  //       throw new BadRequestException('You already have this book issued');
-  //     }
-
-  //     const loan = await tx.loan.create({
-  //       data: {
-  //         userId,
-  //         bookId,
-  //       },
-  //     });
-
-  //     await tx.book.update({
-  //       where: { id: bookId },
-  //       data: { quantity: { decrement: 1 } },
-  //     });
-
-  //     return loan;
-  //   });
-  // }
 
   async returnBook(loanId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {

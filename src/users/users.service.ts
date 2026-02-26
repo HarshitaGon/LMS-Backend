@@ -32,7 +32,7 @@ export class UsersService {
 
     return this.prisma.user.findMany({
       where: {
-        isActive: true, // 🔥 key line
+        isActive: true,
         AND: [
           name ? { name: { contains: name, mode: 'insensitive' } } : {},
           email ? { email: { contains: email, mode: 'insensitive' } } : {},
@@ -42,10 +42,6 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    // const user = await this.prisma.user.findUnique({
-    //   where: { id },
-    // });
-
     const user = await this.prisma.user.findFirst({
       where: {
         id: id,
